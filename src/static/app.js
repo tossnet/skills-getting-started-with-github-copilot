@@ -20,15 +20,20 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Create participants list
+        // Create participants list with delete icon, no bullets
         let participantsHTML = '';
         if (details.participants.length > 0) {
           participantsHTML = `
             <div class="participants-section">
               <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(p => `<li>${p}</li>`).join('')}
-              </ul>
+              <div class="participants-list">
+                ${details.participants.map(p => `
+                  <div class="participant-item">
+                    <span>${p}</span>
+                    <button class="delete-participant" title="Remove" data-activity="${name}" data-email="${p}">&#128465;</button>
+                  </div>
+                `).join('')}
+              </div>
             </div>
           `;
         } else {
@@ -49,6 +54,30 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
 
         activitiesList.appendChild(activityCard);
+
+        // Add event listeners for delete buttons after rendering
+        setTimeout(() => {
+          const deleteButtons = activityCard.querySelectorAll('.delete-participant');
+          deleteButtons.forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+              const activityName = btn.getAttribute('data-activity');
+              const email = btn.getAttribute('data-email');
+              try {
+                const response = await fetch(`/activities/${encodeURIComponent(activityName)}/unregister?email=${encodeURIComponent(email)}`, {
+                  method: 'POST',
+                });
+                if (response.ok) {
+                  fetchActivities(); // Refresh list
+                } else {
+                  const result = await response.json();
+                  alert(result.detail || 'Failed to remove participant');
+                }
+              } catch (error) {
+                alert('Failed to remove participant.');
+              }
+            });
+          });
+        }, 0);
 
         // Add option to select dropdown
         const option = document.createElement("option");
@@ -83,6 +112,7 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        fetchActivities(); // Refresh activities after signup
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
